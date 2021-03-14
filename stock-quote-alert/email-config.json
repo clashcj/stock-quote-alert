@@ -1,0 +1,10 @@
+{
+  "to": "gjorgec@gmail.com",
+  "from": "gjorgec@gmail.com",
+  "server": "smtp.gmail.com",
+  "port": 587,
+  "ssl": true,
+  "defaultCredentials": false,
+  "password": "vlyzxygrcauadqlr",
+  "intervaloMinutosEmail": 5
+}
