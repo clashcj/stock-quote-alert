@@ -12,31 +12,27 @@ namespace stock_quote_alert
 {
     class Program
     {
-        static HttpClient client = new HttpClient();
+        static readonly HttpClient client = new();
 
-        static string nomeAtivo = "";
+        private static string nomeAtivo = string.Empty;
 
-        static decimal precoVenda = 0;
+        private static decimal precoVenda = decimal.Zero;
 
-        static decimal precoCompra = 0;
+        private static decimal precoCompra = decimal.Zero;
 
-        static async Task<decimal?> GetPreco(string url)
+        private static async Task<decimal?> GetPreco(string url)
         {
-            Stock acao;
-            string json;
             HttpResponseMessage response = await client.GetAsync(url);
 
-            if (response.IsSuccessStatusCode)
-            {
-                json = await response.Content.ReadAsStringAsync();
-                var index = json.IndexOf(nomeAtivo);
-                json = json.Substring(0, index) + "nomeAtivo" + json.Substring(index + nomeAtivo.Length);
-                acao = JsonSerializer.Deserialize<Stock>(json);
-            }
-            else
+            if (!response.IsSuccessStatusCode)
             {
                 return null;
             }
+
+            string json = await response.Content.ReadAsStringAsync();
+            int index = json.IndexOf(nomeAtivo);
+            json = json[..index] + "nomeAtivo" + json[(index + nomeAtivo.Length)..];
+            Stock acao = JsonSerializer.Deserialize<Stock>(json);
 
             return acao.results.nomeAtivo.price;
         }
@@ -48,14 +44,13 @@ namespace stock_quote_alert
                 if (args.Length == 0)
                 {
                     Console.WriteLine("Por favor entre com o nome do ativo, o preço de referência para venda e o preço de referência para compra.");
+                    return;
                 }
-                else
-                {
-                    nomeAtivo = args[0];
-                    precoVenda = Convert.ToDecimal(args[1]);
-                    precoCompra = Convert.ToDecimal(args[2]);
-                    Run().GetAwaiter().GetResult();
-                }
+
+                nomeAtivo = args[0];
+                precoVenda = Convert.ToDecimal(args[1], new CultureInfo("en-US"));
+                precoCompra = Convert.ToDecimal(args[2], new CultureInfo("en-US"));
+                Run().GetAwaiter().GetResult();
             }
             catch (Exception e)
             {
@@ -75,17 +70,26 @@ namespace stock_quote_alert
                             .AddJsonFile("email-config.json", optional: true, reloadOnChange: true)
                             .Build();
             config = builder.Get<SmtpConfig>();
-            SmtpClient smtpClient = new SmtpClient(config.server);
-            smtpClient.EnableSsl = config.ssl;
-            smtpClient.DeliveryMethod = SmtpDeliveryMethod.Network;
-            smtpClient.Port = config.port;
-            smtpClient.UseDefaultCredentials = config.defaultCredentials;
-            smtpClient.Credentials = new NetworkCredential(config.from, config.password);
-            MailMessage mensagemCompra = new MailMessage(config.from, config.to);
-            MailMessage mensagemVenda = new MailMessage(config.from, config.to);
-            mensagemCompra.Subject = "Alerta de Ações - Compra";
-            mensagemVenda.Subject = "Alerta de Ações - Venda";
-            DateTime? dataUltimoEmailEnviado = null ;
+            SmtpClient smtpClient = new(config.server)
+            {
+                EnableSsl = config.ssl,
+                DeliveryMethod = SmtpDeliveryMethod.Network,
+                Port = config.port,
+                UseDefaultCredentials = config.defaultCredentials,
+                Credentials = new NetworkCredential(config.from, config.password)
+            };
+
+            MailMessage mensagemCompra = new(config.from, config.to)
+            {
+                Subject = "Alerta de Ações - Compra"
+            };
+
+            MailMessage mensagemVenda = new(config.from, config.to)
+            {
+                Subject = "Alerta de Ações - Venda"
+            };
+
+            DateTime? dataUltimoEmailEnviado = null;
 
             Console.WriteLine("Pressione ESC para encerrar o programa");
             do
@@ -94,36 +98,33 @@ namespace stock_quote_alert
                 {
                     try
                     {
-                        valorAtualAcao = await GetPreco($"https://api.hgbrasil.com/finance/stock_price?format=json&key=981c1cf3&symbol={nomeAtivo}");
+                        //Verifica se está no intervalo para envio de email para não ficar realizando muitas consultas a API que pode causar bloqueio da chave de consulta.
+                        if (dataUltimoEmailEnviado is object && DateTime.Now.Subtract(dataUltimoEmailEnviado.Value).TotalMinutes <= config.intervaloMinutosEmail)
+                        {
+                            continue;
+                        }
+
+                        valorAtualAcao = await GetPreco($"https://api.hgbrasil.com/finance/stock_price?format=json&key=86a75eb7&symbol={nomeAtivo}");
 
                         if (valorAtualAcao != null)
                         {
                             if (valorAtualAcao >= precoVenda)
                             {
-                                if (dataUltimoEmailEnviado == null ||
-                                    (DateTime.Now - dataUltimoEmailEnviado.GetValueOrDefault()).TotalMinutes > config.intervaloMinutosEmail)
-                                {
-                                    //Envia email de acordo com intervalo configurado (em minutos)
-                                    variacaoPorcentagem = Math.Round(((valorAtualAcao ?? 0) / precoVenda - 1) * 100, 2);
-                                    mensagemVenda.Body = $"O preço da ação {nomeAtivo} está em {string.Format(CultureInfo.GetCultureInfo("pt-BR"), "{0:C2}", valorAtualAcao)}, {variacaoPorcentagem}% acima do preço de venda configurado! Hora de vender!";
-                                    smtpClient.Send(mensagemVenda);
-                                    dataUltimoEmailEnviado = DateTime.Now;
-                                    Console.WriteLine($"{DateTime.Now} - Email de venda enviado!");
-                                }
+                                //Envia email de acordo com intervalo configurado (em minutos)
+                                variacaoPorcentagem = Math.Round(((valorAtualAcao ?? 0) / precoVenda - 1) * 100, 2);
+                                mensagemVenda.Body = $"O preço da ação {nomeAtivo} está em {string.Format(CultureInfo.GetCultureInfo("pt-BR"), "{0:C2}", valorAtualAcao)}, {variacaoPorcentagem}% acima do preço de venda configurado! Hora de vender!";
+                                smtpClient.Send(mensagemVenda);
+                                dataUltimoEmailEnviado = DateTime.Now;
+                                Console.WriteLine($"{DateTime.Now} - Email de venda enviado!");
                             }
                             else if (valorAtualAcao <= precoCompra)
                             {
-                                if (dataUltimoEmailEnviado == null ||
-                                    (DateTime.Now - dataUltimoEmailEnviado.GetValueOrDefault()).TotalMinutes > config.intervaloMinutosEmail)
-                                {
-
-                                    //Envia email de acordo com intervalo configurado (em minutos)
-                                    variacaoPorcentagem = Math.Round(((valorAtualAcao ?? 0) / precoCompra - 1) * 100, 2);
-                                    mensagemCompra.Body = $"O preço da ação {nomeAtivo} está em {string.Format(CultureInfo.GetCultureInfo("pt-BR"), "{0:C2}", valorAtualAcao)}, {variacaoPorcentagem}% abaixo do preço de compra configurado! Hora de comprar!";
-                                    smtpClient.Send(mensagemCompra);
-                                    dataUltimoEmailEnviado = DateTime.Now;
-                                    Console.WriteLine($"{DateTime.Now} - Email de compra enviado!");
-                                }
+                                //Envia email de acordo com intervalo configurado (em minutos)
+                                variacaoPorcentagem = Math.Round(((valorAtualAcao ?? 0) / precoCompra - 1) * 100, 2);
+                                mensagemCompra.Body = $"O preço da ação {nomeAtivo} está em {string.Format(CultureInfo.GetCultureInfo("pt-BR"), "{0:C2}", valorAtualAcao)}, {variacaoPorcentagem}% abaixo do preço de compra configurado! Hora de comprar!";
+                                smtpClient.Send(mensagemCompra);
+                                dataUltimoEmailEnviado = DateTime.Now;
+                                Console.WriteLine($"{DateTime.Now} - Email de compra enviado!");
                             }
                         }
                     }
