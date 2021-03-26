@@ -7,6 +7,5 @@
     public bool ssl { get; set; }
     public bool defaultCredentials { get; set; }
     public string password { get; set; }
-
     public int intervaloMinutosEmail { get; set; }
 }

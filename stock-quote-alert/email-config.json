@@ -6,5 +6,5 @@
   "ssl": true,
   "defaultCredentials": false,
   "password": "vlyzxygrcauadqlr",
-  "intervaloMinutosEmail": 5
+  "intervaloMinutosEmail": 1
 }
