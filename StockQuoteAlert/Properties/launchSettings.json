@@ -1,6 +1,9 @@
 {
   "profiles": {
-    "stock-quote-alert": {
+    "WSL 2": {
+      "commandName": "WSL2"
+    },
+    "StockQuoteAlert": {
       "commandName": "Project",
       "commandLineArgs": "PETR4 20.00 19.00"
     }
