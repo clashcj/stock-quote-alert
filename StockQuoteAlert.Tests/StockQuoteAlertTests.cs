@@ -1,7 +1,7 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using stock_quote_alert;
 using System;
 using System.Net.Mail;
+using StockQuoteAlert;
 
 namespace stock_quote_alterts.Tests
 {

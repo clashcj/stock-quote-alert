@@ -10,7 +10,7 @@ using System.Threading;
 using stock_quote_alert.Converters;
 using Newtonsoft.Json;
 
-namespace stock_quote_alert
+namespace StockQuoteAlert
 {
     public class Program
     {

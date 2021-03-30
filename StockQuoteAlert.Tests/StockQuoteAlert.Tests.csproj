@@ -17,7 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\stock-quote-alert\stock-quote-alert.csproj" />
+    <ProjectReference Include="..\StockQuoteAlert\StockQuoteAlert.csproj" />
   </ItemGroup>
 
 </Project>
