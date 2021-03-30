@@ -13,4 +13,8 @@ Alerta para compra e venda de ações
 - [X] Adicionar CancellationToken para encerrar programa
 - [X] Adicionar projeto de testes unitários
 - [ ] Adicionar dicionário de exceções
-
+- [ ] Listar ações que a API atende no começo da execução
+- [ ] Validar código da ação em um dicionário de ações disponíveis
+- [ ] Montar um HTML e compra e um de venda pra ser enviado no email
+- [ ] Mostrar intervalo de espera durante a execução
+- [ ] Mudar API consultada para API da B3
